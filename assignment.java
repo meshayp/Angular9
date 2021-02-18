@@ -1,6 +1,33 @@
+import java.util.*; 
+//import com.google.gson.Gson; 
+
+public class Main
+{
+	public static void main(String[] args) {
+		System.out.println("Hello World");
+		EditorAPI edit = new EditorAPI();
+		
+		edit.print();
+		edit.add("aaa");
+		edit.print();
+		edit.add("bbb");
+		edit.print();
+		edit.undo();
+		edit.print();
+		edit.redo();
+		edit.print();
+		edit.bold(1,2);
+		edit.print();
+		edit.italic(3,4);
+		edit.print();
+		
+		
+	}
+}
+
 class style
 {
-	Set<String> attribs = new HashSet();   // make set
+	Set<String> attribs = new HashSet<>();   // make set
 }
 
 class textPart 
@@ -11,16 +38,16 @@ class textPart
 	public String toString()
 	{
 		StringBuilder sb = new StringBuilder();
-		sb.add("<div ");
+		sb.append("<div ");
 		for(String key : style.attribs)
 		{
-			sb.add(key);
-			sb.add(" = ");
-			sb.add("true ");
+			sb.append(key);
+			sb.append(" = ");
+			sb.append("true ");
 		}
-		sb.add(">");
-		sb.add(text);
-		sb.add("</div>");
+		sb.append(">");
+		sb.append(text);
+		sb.append("</div>");
 		
 		return sb.toString();
 	}
@@ -47,14 +74,14 @@ class TextSpan
 class Editor 
 {
 	String text = "";
-	HashMap<int, style> styles = new HashMap();
-	List<UndoRedoItem> undo = new ArrayList<>();   // can make one list and save position
-	List<UndoRedoItem> redo = new ArrayList<>();
+	HashMap<Integer, style> styles = new HashMap<>();
+	List<Operation> undo = new ArrayList<>();   // can make one list and save position
+	List<Operation> redo = new ArrayList<>();
 	
 	private boolean fixSpan(TextSpan tSpan)
 	{
 		if (tSpan.start > tSpan.end ||
-		    tSpan.start > text.length ||
+		    tSpan.start > text.length() ||
 			tSpan.end < 0)
 		{
 			return false;    
@@ -65,9 +92,9 @@ class Editor
 			tSpan.start = 0;
 		}
 		
-		if (tSpan.end > text.length)   // check if index is valid
+		if (tSpan.end > text.length())   // check if index is valid
 		{
-			tSpan.end = text.length;
+			tSpan.end = text.length();
 		}
 		
 		return true;
@@ -76,34 +103,34 @@ class Editor
 	public Operation createOperation(Object ...args)
 	{
 		Operation oper = new Operation();
-		oper.operation = args.get(0).toString;
+		oper.operation = args[0].toString();
 		oper.data = new ArrayList<>();
 		for(int i=1; i < args.length; i++)
 		{
-			oper.data.add(args.get(i).toString());
+			oper.data.add(args[i].toString());
 		}
 		
 		return oper;
 	}
 	
-	public void operation(Operation item, boolean registerUndo = true)
+	public void operation(Operation item, boolean registerUndo)
 	{
 		boolean operationSucceeded = true;
 		
 		switch(item.operation)
 		{
 			case "add" :
-			    if (item.data.length == 1)
-					add(data.get(0));
-				else if (item.data.length == 2)
-					operationSucceeded = add(data.get(0), data.get(1));
+			    if (item.data.size() == 1)
+					add(item.data.get(0));
+				else if (item.data.size() == 2)
+					operationSucceeded = add(item.data.get(0), Integer.parseInt(item.data.get(1)));
 				else operationSucceeded = false;
 			break;
 			
 			case "remove" :
-				if (item.data.length == 2)
+				if (item.data.size() == 2)
 				{
-					operationSucceeded = remove(item.data.get(0), item.data.get(1));
+					operationSucceeded = remove( Integer.parseInt(item.data.get(0)), Integer.parseInt(item.data.get(1)));
 				}
 				else
 				{
@@ -115,9 +142,9 @@ class Editor
 			case "undeline" :
 			case "italic" :
 			
-				if (item.data.length == 2)
+				if (item.data.size() == 2)
 				{
-					operationSucceeded = putStyle(item.operation , item.data.get(0), item.data.get(1));
+					operationSucceeded = putStyle(item.operation , Integer.parseInt(item.data.get(0)), Integer.parseInt(item.data.get(1)));
 				}
 				else
 				{
@@ -137,7 +164,7 @@ class Editor
 		
 		if (operationSucceeded)
 		{
-				if (registerUndo && item.operation !== "undo" && item.operation !== "redo")
+				if (registerUndo && item.operation != "undo" && item.operation != "redo")
 				{
 					undo.add(item);
 					redo.clear();
@@ -147,14 +174,14 @@ class Editor
 	
 	private void undo()
 	{
-		if (undo.length > 0)  // check if no more undoes
+		if (undo.size() > 0)  // check if no more undoes
 		{
-			redo.add(undo.get(undo.length-1));    
-			undo.remove(undo.length-1);
+			redo.add(undo.get(undo.size()-1));    
+			undo.remove(undo.size()-1);
 			
 			text = "";
 			styles.clear();
-			for(int i=0; i < undo.length; i++)
+			for(int i=0; i < undo.size(); i++)
 			{
 				operation(undo.get(i), false);
 			}
@@ -163,12 +190,12 @@ class Editor
 	
 	private void redo()   
 	{		
-	    if (redo.length > 0)  // check if no more redues
+	    if (redo.size() > 0)  // check if no more redues
 		{
-			operation(redo.get(redo.length-1), false);  
+			operation(redo.get(redo.size()-1), false);  
 			
-			undo.add(redo.get(redo.length-1));
-			redo.remove(redo.length-1);
+			undo.add(redo.get(redo.size()-1));
+			redo.remove(redo.size()-1);
 		}
 	}
 	
@@ -179,18 +206,18 @@ class Editor
 	
 	private boolean add(String newText, int index)
 	{		
-	    if (index >= text.length || index < 0)  // check if index is valid
+	    if (index >= text.length() || index < 0)  // check if index is valid
 		{
 			return false;
 		}
 	
 		text = text.substring(0, index + 1) + newText + text.substring(index + 1);    
 		
-		HashMap<int, style> newStyles = new HashMap();
-		for(int i=index; i < index+newText.length)
+		HashMap<Integer, style> newStyles = new HashMap<>();
+		for(int i=index; i < index+newText.length(); i++)
 		{
-			if (styles.contains(i)) {
-				newStyles.put(i+newText.length, styles.get(i));
+			if (styles.containsKey(i)) {
+				newStyles.put(i+newText.length(), styles.get(i));
 				styles.remove(i);
 			}
 		}
@@ -205,22 +232,22 @@ class Editor
 	
 	private boolean remove(int start, int end)     
 	{	 
-		TextSpan tspan = new (start, end);
+		TextSpan tspan = new TextSpan(start, end);
 	
 		if (!fixSpan(tspan)) return false;
 	
 	
-		HashMap<int, style> newStyles = new HashMap();
+		HashMap<Integer, style> newStyles = new HashMap<>();
 		for(int i=tspan.start; i < tspan.end; i++)
 		{
-			if (styles.contains(i)) {
+			if (styles.containsKey(i)) {
 				styles.remove(i);
 			}
 		}
 		
-		for(int i=tspan.end; i < text.length; i++)
+		for(int i=tspan.end; i < text.length(); i++)
 		{
-			if (styles.contains(i)) {
+			if (styles.containsKey(i)) {
 				styles.put(i-(tspan.end-tspan.start+1), styles.get(i));
 			}
 		}
@@ -234,18 +261,18 @@ class Editor
 	
 	private boolean putStyle(String style, int start, int end)   // check if index is valid
 	{
-		TextSpan tspan = new (start, end);
+		TextSpan tspan = new TextSpan(start, end);
 	
 		if (!fixSpan(tspan)) return false;
 		
 		for(int i=tspan.start; i < tspan.end; i++)
 		{
-			if (!styles.contains(i))
+			if (!styles.containsKey(i))
 			{
 				styles.put(i, new style());
 			}
 			
-			styles.get(i).put(style, true);
+			styles.get(i).attribs.add(style);
 		}
 		
 		return true;
@@ -253,17 +280,19 @@ class Editor
 	
 	public String generate()
 	{
-		if (text.length == 0) return "";
+		if (text.length() == 0) return "";
 		
 		List<textPart> parts = new ArrayList<>();
 		parts.add(new textPart());
-		parts.get(0).text += text.get(0);
+		//parts.get(0).text += text.charAt(0);
+		parts.get(0).text = "";
 		parts.get(0).style = styles.get(0);
+		if (parts.get(0).style == null) parts.get(0).style = new style();
 		textPart currentPart = parts.get(0);
-		for(int i = 1; i < text.length; i++)
+		for(int i = 0; i < text.length(); i++)
 		{
-			style currentStyle = new Style();
-			if (styles.contains(i))
+			style currentStyle = new style();
+			if (styles.containsKey(i))
 			{
 				currentStyle = styles.get(i);
 			}
@@ -275,13 +304,13 @@ class Editor
 				parts.add(currentPart);
 			}
 			
-			currentPart.text += text.get(i);
+			currentPart.text += text.charAt(i);
 		}
 		
 		StringBuilder sb = new StringBuilder();
-		for(int i=0; i < parts.length; i++)
+		for(int i=0; i < parts.size(); i++)
 		{
-			sb.add(parts.get(i).toString);
+			sb.append(parts.get(i).toString());
 		}
 		
 		return sb.toString();
@@ -296,83 +325,83 @@ class EditorAPI
 	 
 	 public void bold(int start, int end)   
 	{		
-	    editor.operation ( editor.createOperation("bold", start, end) );
+	    editor.operation ( editor.createOperation("bold", start, end), true );
 	}
 	
 	public void italic(int start, int end)
 	{		
-		editor.operation ( editor.createOperation("italic", start, end) );
+		editor.operation ( editor.createOperation("italic", start, end), true );
 	}
 	
 	public void undeline(int start, int end)
 	{
-		editor.operation ( editor.createOperation("undeline", start, end) ); 
+		editor.operation ( editor.createOperation("undeline", start, end), true ); 
 	}
 	
 	public void undo()
 	{
-		editor.operation ( editor.createOperation("undo") ); 
+		editor.operation ( editor.createOperation("undo"), false ); 
 	}
 	
 	public void redo()
 	{
-		editor.operation ( editor.createOperation("redo") ); 
+		editor.operation ( editor.createOperation("redo"), false ); 
 	}
 	
-	public String print()  
+	public void print()  
 	{
-		System.out.print(editor.generate());
+		System.out.println(editor.generate());
 	}
 	
 	public void add(String newText)
 	{
-		editor.operation ( editor.createOperation("add", newText) ); 
+		editor.operation ( editor.createOperation("add", newText), true ); 
 	}
 	
 	public void add(String newText, int position)
 	{
-		editor.operation ( editor.createOperation("add", newText, position) ); 
+		editor.operation ( editor.createOperation("add", newText, position), true ); 
 	}
 	 
 	public void remove(int start, int end)
 	{
-		editor.operation ( editor.createOperation("remove", start, end) ); 
+		editor.operation ( editor.createOperation("remove", start, end), true ); 
 	}
 }
 
 
 
-class EditorRestApi
-{
-	class outJson
-	{
-		Editor editor;
-		String result;
-	}
-
-	class inJson
-	{
-		Editor editor;
-		Operation commnad;
-	}
-	
-	public String command(String data)
-	{
-		Type type = new TypeToken<inJson>(){}.getType();
-        inJson inObj = gson.fromJson(data, type);
-		
-		ibObj.editor.operation(ibObj.commnad);
-		
-		outJson outObj = new outJson();
-		outObj.editor = inObj.editor;
-		outObj.result = outObj.editor.generate();
-		
-		Gson gson = new Gson();
-		String jsonString = gson.toJson(outObj);
-		
-		return jsonString;
-	}
-
-}
+//class EditorRestApi
+//{
+//	class outJson
+//	{
+//		Editor editor;
+//		String result;
+//	}
+//
+//	class inJson
+//	{
+//		Editor editor;
+//		Operation commnad;
+//	}
+//	
+//	public String command(String data)
+//	{
+//		Type type = new TypeToken<inJson>(){}.getType();
+//        inJson inObj = gson.fromJson(data, type);
+//		
+//		ibObj.editor.operation(ibObj.commnad, true);
+//		
+//		outJson outObj = new outJson();
+//		outObj.editor = inObj.editor;
+//		outObj.result = outObj.editor.generate();
+//		
+//		Gson gson = new Gson();
+//		String jsonString = gson.toJson(outObj);
+//		
+//		return jsonString;
+//	}
+//
+//}
 		
 		
