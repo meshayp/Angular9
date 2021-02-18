@@ -253,6 +253,8 @@ class Editor
 	
 	public String generate()
 	{
+		if (text.length == 0) return "";
+		
 		List<textPart> parts = new ArrayList<>();
 		parts.add(new textPart());
 		parts.get(0).text += text.get(0);
