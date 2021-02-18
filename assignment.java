@@ -1,6 +1,6 @@
 class style
 {
-	HashMap<String, boolean> attribs = new HashMap();   // make set
+	Set<String> attribs = new HashSet();   // make set
 }
 
 class textPart 
@@ -32,84 +32,159 @@ class Operation
 	List<String> data;
 }
 
+class TextSpan
+{
+	public TextSpan(int p_start, int p_end)
+	{
+		start = p_start;
+		end = p_end;
+	}
+	
+	int start;
+	int end;
+}
+
 class Editor 
 {
 	String text = "";
 	HashMap<int, style> styles = new HashMap();
-	List<UndoRedoItem> undo = new ArrayList<>();   // can make one listand save position
+	List<UndoRedoItem> undo = new ArrayList<>();   // can make one list and save position
 	List<UndoRedoItem> redo = new ArrayList<>();
-
-	public void operation(String operationName , List<String> data, boolean registerUndo = true)
+	
+	private boolean fixSpan(TextSpan tSpan)
 	{
-		if (registerUndo)
+		if (tSpan.start > tSpan.end ||
+		    tSpan.start > text.length ||
+			tSpan.end < 0)
 		{
-			Operation item = new Operation();
-			item.operation = operationName;
-			item.data = data;
-			undo.add(item);
-			
-			redo.clear();
+			return false;    
+		}
+	
+	    if (tSpan.start < 0)   // check if index is valid
+		{
+			tSpan.start = 0;
 		}
 		
-		switch(operationName)
+		if (tSpan.end > text.length)   // check if index is valid
+		{
+			tSpan.end = text.length;
+		}
+		
+		return true;
+	}
+	
+	public Operation createOperation(Object ...args)
+	{
+		Operation oper = new Operation();
+		oper.operation = args.get(0).toString;
+		oper.data = new ArrayList<>();
+		for(int i=1; i < args.length; i++)
+		{
+			oper.data.add(args.get(i).toString());
+		}
+		
+		return oper;
+	}
+	
+	public void operation(Operation item, boolean registerUndo = true)
+	{
+		boolean operationSucceeded = true;
+		
+		switch(item.operation)
 		{
 			case "add" :
-			    if (data.length == 1)
+			    if (item.data.length == 1)
 					add(data.get(0));
-				
-				if (data.length == 2)
-					add(data.get(0), data.get(1));
+				else if (item.data.length == 2)
+					operationSucceeded = add(data.get(0), data.get(1));
+				else operationSucceeded = false;
 			break;
 			
 			case "remove" :
-			    remove(data.get(0), data.get(1));
+				if (item.data.length == 2)
+				{
+					operationSucceeded = remove(item.data.get(0), item.data.get(1));
+				}
+				else
+				{
+					operationSucceeded = false;
+				}
 			break;
 			
 			case "bold" :
-				bold(data.get(0), data.get(1));
-			break;
-			
 			case "undeline" :
-				undeline(data.get(0), data.get(1));
-			break;
-			
 			case "italic" :
-				italic(data.get(0), data.get(1));
+			
+				if (item.data.length == 2)
+				{
+					operationSucceeded = putStyle(item.operation , item.data.get(0), item.data.get(1));
+				}
+				else
+				{
+					operationSucceeded = false;
+				}
+				
 			break;
 			
-			
+			case "undo" :
+			   undo();
+			   break;
+			   
+			case "redo" :
+			   redo();
+			   break;
 		}
-	}
-	
-	public void undo()
-	{
-		redo.add(undo.get(undo.length-1));    // check if no more undoes
-		undo.remove(undo.length-1);
 		
-		text = "";
-		styles.clear();
-		for(int i=0; i < undo.length; i++)
+		if (operationSucceeded)
 		{
-			operation(undo.get(i).operation, undo.get(i).data, false);
+				if (registerUndo && item.operation !== "undo" && item.operation !== "redo")
+				{
+					undo.add(item);
+					redo.clear();
+				}
 		}
 	}
 	
-	public void redo()   
-	{		
-		operation(redo.get(redo.length-1).operation, redo.get(redo.length-1).data, false);  // check if no more redues
-		
-		undo.add(redo.get(redo.length-1));
-		redo.remove(redo.length-1);
+	private void undo()
+	{
+		if (undo.length > 0)  // check if no more undoes
+		{
+			redo.add(undo.get(undo.length-1));    
+			undo.remove(undo.length-1);
+			
+			text = "";
+			styles.clear();
+			for(int i=0; i < undo.length; i++)
+			{
+				operation(undo.get(i), false);
+			}
+		}
 	}
 	
-	public void add(String newText)
+	private void redo()   
+	{		
+	    if (redo.length > 0)  // check if no more redues
+		{
+			operation(redo.get(redo.length-1), false);  
+			
+			undo.add(redo.get(redo.length-1));
+			redo.remove(redo.length-1);
+		}
+	}
+	
+	private void add(String newText)
 	{
 		text += newText;
 	}
 	
-	public void add(String newText, int index)
+	private boolean add(String newText, int index)
 	{		
-		text = text.substring(0, index + 1) + newText + text.substring(index + 1);    // check if index is valid
+	    if (index >= text.length || index < 0)  // check if index is valid
+		{
+			return false;
+		}
+	
+		text = text.substring(0, index + 1) + newText + text.substring(index + 1);    
 		
 		HashMap<int, style> newStyles = new HashMap();
 		for(int i=index; i < index+newText.length)
@@ -124,46 +199,46 @@ class Editor
 		{
 			styles.put(key, newStyles.get(key));
 		}
+		
+		return true;
 	}
 	
-	public void remove(int start, int end)     // check if index is valid
-	{	
+	private boolean remove(int start, int end)     
+	{	 
+		TextSpan tspan = new (start, end);
+	
+		if (!fixSpan(tspan)) return false;
+	
+	
 		HashMap<int, style> newStyles = new HashMap();
-		for(int i=start; i < end; i++)
+		for(int i=tspan.start; i < tspan.end; i++)
 		{
 			if (styles.contains(i)) {
 				styles.remove(i);
 			}
 		}
 		
-		for(int i=end; i < text.length; i++)
+		for(int i=tspan.end; i < text.length; i++)
 		{
 			if (styles.contains(i)) {
-				styles.put(i-(end-start), styles.get(i));
+				styles.put(i-(tspan.end-tspan.start+1), styles.get(i));
 			}
 		}
 		
-		text = text.substring(0, start + 1) + text.substring(end + 1); 
+		text = text.substring(0, tspan.start + 1) + text.substring(tspan.end + 1); 
+		
+		return true;
 	}
 	
-	public void bold(int start, int end)   
-	{		
-		putStyle("bold", start, end)
-	}
 	
-	public void italic(int start, int end)
-	{		
-		putStyle("italic", start, end)
-	}
 	
-	public void undeline(int start, int end)
+	private boolean putStyle(String style, int start, int end)   // check if index is valid
 	{
-		putStyle("undeline", start, end)
-	}
+		TextSpan tspan = new (start, end);
 	
-	public putStyle(String style, int start, int end)   // check if index is valid
-	{
-		for(int i=start; i < end; i++)
+		if (!fixSpan(tspan)) return false;
+		
+		for(int i=tspan.start; i < tspan.end; i++)
 		{
 			if (!styles.contains(i))
 			{
@@ -172,9 +247,11 @@ class Editor
 			
 			styles.get(i).put(style, true);
 		}
+		
+		return true;
 	}
 	
-	public print()  
+	public String generate()
 	{
 		List<textPart> parts = new ArrayList<>();
 		parts.add(new textPart());
@@ -205,15 +282,95 @@ class Editor
 			sb.add(parts.get(i).toString);
 		}
 		
-		System.out.print(sb.toString());
+		return sb.toString();
+	}
+
+}
+
+class EditorAPI
+{
+     private Editor editor = new Editor();
+	 
+	 
+	 public void bold(int start, int end)   
+	{		
+	    editor.operation ( editor.createOperation("bold", start, end) );
+	}
+	
+	public void italic(int start, int end)
+	{		
+		editor.operation ( editor.createOperation("italic", start, end) );
+	}
+	
+	public void undeline(int start, int end)
+	{
+		editor.operation ( editor.createOperation("undeline", start, end) ); 
+	}
+	
+	public void undo()
+	{
+		editor.operation ( editor.createOperation("undo") ); 
+	}
+	
+	public void redo()
+	{
+		editor.operation ( editor.createOperation("redo") ); 
+	}
+	
+	public String print()  
+	{
+		System.out.print(editor.generate());
+	}
+	
+	public void add(String newText)
+	{
+		editor.operation ( editor.createOperation("add", newText) ); 
+	}
+	
+	public void add(String newText, int position)
+	{
+		editor.operation ( editor.createOperation("add", newText, position) ); 
+	}
+	 
+	public void remove(int start, int end)
+	{
+		editor.operation ( editor.createOperation("remove", start, end) ); 
 	}
 }
 
 
 
-class EditorUI
+class EditorRestApi
 {
-     private Editor editor = new Editor();
+	class outJson
+	{
+		Editor editor;
+		String result;
+	}
+
+	class inJson
+	{
+		Editor editor;
+		Operation commnad;
+	}
+	
+	public String command(String data)
+	{
+		Type type = new TypeToken<inJson>(){}.getType();
+        inJson inObj = gson.fromJson(data, type);
+		
+		ibObj.editor.operation(ibObj.commnad);
+		
+		outJson outObj = new outJson();
+		outObj.editor = inObj.editor;
+		outObj.result = outObj.editor.generate();
+		
+		Gson gson = new Gson();
+		String jsonString = gson.toJson(outObj);
+		
+		return jsonString;
+	}
+
 }
 		
-		undo.add(undoitem);
+		
